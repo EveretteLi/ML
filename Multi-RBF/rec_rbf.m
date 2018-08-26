@@ -5,20 +5,21 @@
 % sp: spread
 % mn: max number of neurans
 % dp: display gap
-function [final_prediction] = rec_rbf(a, x, y, eg, sp, mn, dp)
+function [final_prediction, model_list] = rec_rbf(a, x, y, eg, sp, mn, dp)
 % determine a constant rate - alpha
 alpha = a;
 arg_array = {x, y, eg, sp, mn, dp};
-
-final_prediction = recursive_rbf(arg_array, alpha);
+model_list = [];
+[final_prediction, model_list] = recursive_rbf(arg_array, alpha, model_list);
 end
 
 %% recursive step of approximation.
 % decrease the size of training set while decreasding sp
-function temp_prediction = recursive_rbf(arg_array, alpha)
+function [temp_prediction, model_array] = recursive_rbf(arg_array, alpha, model_array)
 disp("Recursion start: ");
 disp("with alpha: " + alpha);
 disp("spread: " + arg_array{4});
+disp("adapted models: " + length(model_array))
 % eg: the error goal that sould be aplied to every elements
 % error goal is how close the prediction to the target -> norm(apro - tgt)
 eg = arg_array{3};
@@ -31,6 +32,10 @@ disp("performance: " +  perform(temp_model, temp_prediction, arg_array{2})...
      + " // " + "GOAL: " + arg_array{3});
  disp("MEET ? " + (perform(temp_model, temp_prediction, arg_array{2}) <= arg_array{3}));
 if perform(temp_model, temp_prediction, arg_array{2}) <= arg_array{3}
+    disp("new model added");
+    temp_model.userdata = "from: " + arg_array{1}(1) + " to: " + arg_array{1}(end);
+    disp(temp_model.userdata);
+    model_array{end+1} = {temp_model, arg_array{1}, arg_array{2}};
     disp("ERROR GOAL MEET");
     return
 end
@@ -59,7 +64,7 @@ disp("sub-taining set size: " + length(index_list));
 % if the diference between 2 elements is less than some number dif(let dif = 3)
 % those 2 will be considered in a same group.
 % group array: an cell array of sublist 
-dif = 3;
+dif = 1;
 group_array = find_sublists(index_list, dif);
 disp("group array size: " + length(group_array));
 
@@ -74,8 +79,12 @@ y = arg_array{2};
 for subgroup = 1:length(group_array)    
     arg_array{1} = x(group_array{subgroup}(1):group_array{subgroup}(end));
     arg_array{2} = y(group_array{subgroup}(1):group_array{subgroup}(end));
-    sub_fix_pred = recursive_rbf(arg_array, alpha);
+    [sub_fix_pred, model_array_back] = recursive_rbf(arg_array, alpha, {});
     fix_prediction{end+1} = sub_fix_pred;
+    % check duplicated NN models    disp("new model added through recursion");
+    for model = model_array_back
+        model_array{end+1} = model{1};
+    end
 end
 % replace the bad perdictions on temp_prediction list with new trained
 % outcomes
